@@ -1,65 +1,36 @@
-# ASTC 纹理配置（Creator 2.4.15）
+# ASTC 纹理配置（Creator 3.8.8）
 
-在 Creator 的扩展管理器重载 **astc**，通过顶部独立菜单 **纹理配置 → ASTC 纹理配置** 打开面板。
+由拼豆传送带的 `packages/astc` 移植，替换旧的 3.x ASTC 面板。仅使用 Node 内置模块，无需 npm install 或编译。
 
-## 快速使用
+在扩展管理器重载 **astc**，从顶部 **纹理配置 → ASTC 纹理配置** 打开面板。
 
-1. 在资源管理器选择目录、`.pac`、PNG 或 JPG，点击“检索选中资源”；也可使用“选择目录”、直接输入路径或点击最近目录。
-2. 默认选择“小游戏”，可增加 Android、iOS、Web 或默认平台。输入支持 `db://assets/…`、`assets/…` 和本工程 assets 内的绝对路径。
-3. 查看图集 / PNG / JPG / 图集内碎图统计，表格显示尺寸、处理原因和所选平台的现有配置，支持按名称/路径筛选、只看已有配置和勾选。
-4. 选择 ASTC 块大小、编码质量、回退图质量，点击“应用到勾选资源”。不会自动修改整个工程。
+## 使用
 
-## 批量检索
+1. 在资源管理器选择目录、`.pac`、PNG 或 JPG，点击“检索选中资源”；也可选择目录、输入 `db://assets/…`、`assets/…` 或当前工程 assets 内的绝对路径。
+2. 选择小游戏、Android、iOS 或 Web 分组，查看图集、独立图片和当前压缩配置。支持路径筛选、仅看已有配置、每页 100 项及跨页勾选，检索过程可以停止。
+3. 选择 ASTC 块大小、编码质量和回退图质量，点击“应用到勾选资源”。默认小游戏、ASTC 6×6、均衡质量、回退质量 80。
+4. “移除勾选配置”只处理勾选项；“移除本次检索配置”处理整个检索结果，包含被图集接管的碎图遗留配置，不受关键词和仅看已有配置过滤影响。
 
-- 多选文件复用已知 UUID，父目录图集查询去重；目录检索合并重叠范围，不再为每张图执行重复查询。
-- 资源查询最多并发 4 项，Meta / 选中路径读取最多并发 8 项，并定期让出面板线程；图集归属按父目录索引查找。
-- 检索显示当前阶段与进度，可点击“停止检索”。停止后不生成写入计划，已发出的少量读取请求会自行结束。
-- 结果每页 100 项，关键词输入延迟 100ms 筛选；表头全选作用于**全部筛选结果**，勾选与应用支持跨页。大量选择只展示前 12 条路径标签，全部路径仍参与检索。
-- 保存仍串行执行，避免同时触发大量资源重导入。
+PNG 和图集使用 ASTC + PNG 回退；JPG/JPEG 独立图片使用 ASTC + JPG 回退。图集归属按最近父目录、SpriteFrame 可合图属性及尺寸判断；同目录多个图集停止自动归属，显式选中单个图集仍可操作。最终合图结果、格式剔除和设备支持以构建及真机为准。
 
-## 图集优先
+## 3.8 适配
 
-- 对 PNG、JPG、JPEG 检索，优先配置最近父目录的自动图集 `.pac`，不重复写入由它接管的 Sprite 图片。
-- 没有图集、不是 Sprite 的纹理，或图片已明确超出图集尺寸时，配置图片自身。
-- 单独选择图片或子目录，也会检索其上级目录中的 `.pac`；若实际目标在所选范围外，会在表格说明。
-- 同目录有多个图集时暂停自动归属并列出冲突；显式选择单个 `.pac` 仍可直接操作。
-- 此规则是配置路由；最终实际合图、未使用资源过滤及未打包图片，以 Creator 构建结果为准。
+- 通过 `Editor.Panel.define` 注册面板，使用 `Editor.Selection.getSelected`、`Editor.Dialog.select` 和 `Editor.Message.request('asset-db', …)`，不调用 2.4 的 `Editor.assetdb`。
+- 查询主 `image` 与 `auto-atlas`，将 `@…` 图片子资源 UUID 还原到主图片。压缩设置写入主 Meta 的 `userData.compressSettings`，保留 UUID、子 Meta 和其他导入参数；串行保存后等待重导入完成并读回配置。
+- 通过 `Editor.Profile` 读取/新增 builder 的 `textureCompressConfig.userPreset`。保留原预设中未选择的平台，生成并复用内容相同的预设副本，再让勾选资源引用它；不修改已有共享预设，不影响未勾选资源。
+- 应用分组配置时，同时更新已有的对应具体平台覆盖；移除分组配置时，移除该组及其具体平台覆盖。没有覆盖的具体平台沿用 Creator 内置支持规则，不强制为所有小游戏平台添加 ASTC 覆盖。
+- 移除全部有效格式后关闭该资源的压缩。失效预设、资源移动或保存失败会报告原因，不静默丢弃未知配置。新建预设后若资源保存失败，可能保留未引用预设，插件不会自动删除项目预设。
+- 3.8 没有 2.4 `platformSettings.default` 的同义写法，因此界面使用四个明确的平台分组。图片尺寸来自 SpriteFrame Meta；没有尺寸信息的独立纹理显示“—”。
 
-## JPG 与 PNG
-
-JPG 可以配置 ASTC。ASTC 是 GPU 压缩格式，源文件是否为 JPG 不会令它天然失效。JPG 原有的有损失真不会因转换恢复，最终质量需要检查。
-
-默认方案为：
-
-| 资源 | 输出格式 |
-| --- | --- |
-| 自动图集、PNG | ASTC + PNG 回退，保留透明度 |
-| JPG / JPEG 碎图 | ASTC + JPG 回退 |
-
-ASTC 块越小，通常质量和 GPU 占用越高；编码质量控制压缩耗时与效果。同一块大小下编码质量不会改变固定的每块字节数。ASTC 文件体积不保证小于原 JPG；磁盘/下载体积与 GPU 纹理占用应分别评估。
-
-部分设备、浏览器或开发工具不支持 ASTC，因此保留 PNG/JPG 回退。各平台支持和选择顺序见 [Creator 2.4 压缩纹理文档](https://docs.cocos.com/creator/2.4/manual/zh/asset-workflow/compress-texture.html)。
-
-## 移除配置
-
-- **移除勾选配置**：移除勾选资源在所选平台上的配置。
-- **移除本次检索配置**：移除本次目录/源图片类型范围中所有检索结果的所选平台配置，包含图集内碎图遗留的配置，不受表格关键词或“仅看已有配置”的显示过滤影响。
-- 仅删除指定平台的覆盖项，保留其他平台、图片导入参数和 UUID；如仍存在 Default 配置，表格会显示“继承默认”。
-
-所有写操作重新读取当前 Meta，经 `Editor.assetdb.saveMeta` 串行保存；相同配置跳过，失败资源显示原因。检索不完整时不生成写入计划。
-
-## 文件与验证
-
-- `lib/texture-config.js`：目录归属、图片分类、回退格式和平台配置摘要。
-- `lib/asset-service.js`：AssetDB 检索、主纹理 UUID 解析、串行保存和移除。
-- `lib/async-work.js`：有并发上限、支持取消与让出线程的批量读取。
-- `panel/`：扁平面板及本机最近检索路径，不依赖 Vue。
+## 验证
 
 ```powershell
-node --test packages/astc/tests/texture-config.test.cjs
+node --test extensions/astc/tests/texture-config.test.cjs
 ```
 
-测试使用模拟 AssetDB，不修改正式图片。更新验证还包括使用真实面板代码的浏览器交互、5000 文件的分页/跨页勾选/停止检索、宽/窄布局与 PNG/JPG 回退检查；实际编辑器耗时、构建和设备显示需在目标平台验证。
+专项覆盖真实 3.8 Meta 结构、图集归属、PNG/JPG 回退、主图片 UUID、共享预设隔离、平台覆盖、应用/移除幂等、异常与取消处理，以及千张多选资源的请求去重和并发上限。测试使用内存 AssetDB/Profile，不修改工程图片。
+
+官方依据：[3.8 压缩纹理](https://docs.cocos.com/creator/3.8/manual/zh/asset/compress-texture.html)、[项目设置中的压缩预设](https://docs.cocos.com/creator/3.8/manual/zh/editor/project/index.html)、[扩展配置系统](https://docs.cocos.com/creator/3.8/manual/zh/editor/extension/profile.html)。具体接口与预设格式同时核对本机 Creator 3.8.8 的类型声明。
 
 ## 仓库与版本分支
 
@@ -70,14 +41,14 @@ node --test packages/astc/tests/texture-config.test.cjs
 | 2.4.15 | [2.4.15](https://github.com/1647506059/astc-compression/tree/2.4.15) | 拼豆、拼豆传送带、打毛线 |
 | 3.8.8 | [3.8.8](https://github.com/1647506059/astc-compression/tree/3.8.8) | 倒沙子 |
 
-当前分支为 **2.4.15**。仓库根目录就是完整的 astc 插件目录；两个版本的扩展声明和资源配置 API 不兼容，安装时请选择对应分支。
+当前分支为 **3.8.8**。仓库根目录就是完整的 astc 插件目录；两个版本的扩展声明和资源配置 API 不兼容，安装时请选择对应分支。
 
 首次安装：在工程根目录执行以下命令；目标目录已存在时，先备份现有插件。
 
 ```powershell
-git clone --branch 2.4.15 --single-branch https://github.com/1647506059/astc-compression.git packages/astc
+git clone --branch 3.8.8 --single-branch https://github.com/1647506059/astc-compression.git extensions/astc
 ```
 
-进入插件目录执行 `npm ci --no-audit --no-fund` 安装锁定的依赖。
+此版本只使用 Node 内置模块，无需安装依赖或编译。
 
-通过 Git 克隆安装的插件，可在插件目录执行 `git pull --ff-only` 更新。已有工程内直接复制的插件，可下载对应分支后替换 `packages/astc` 中的插件文件。更新后重载 astc 扩展；工程资源 Meta、压缩预设及本机面板历史属于工程或编辑器数据，不随插件源码发布。
+通过 Git 克隆安装的插件，可在插件目录执行 `git pull --ff-only` 更新。已有工程内直接复制的插件，可下载对应分支后替换 `extensions/astc` 中的插件文件。更新后重载 astc 扩展；工程资源 Meta、压缩预设及本机面板历史属于工程或编辑器数据，不随插件源码发布。

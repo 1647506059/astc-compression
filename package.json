@@ -1,22 +1,39 @@
 {
+    "package_version": 2,
     "name": "astc",
-    "version": "1.0.0",
-    "description": "图集优先的 ASTC 批量配置与检索工具，支持 PNG 和 JPG",
+    "version": "2.0.0",
     "author": "tangcm",
-    "main": "main.js",
-    "main-menu": {
-        "纹理配置/ASTC 纹理配置": {
-            "message": "astc:open"
+    "editor": ">=3.8.8 <3.9.0",
+    "description": "图集优先的 ASTC 批量配置与检索工具，适配 Creator 3.8.8",
+    "main": "./main.js",
+    "scripts": {
+        "test": "node --test tests/texture-config.test.cjs"
+    },
+    "panels": {
+        "default": {
+            "title": "ASTC 纹理配置",
+            "type": "dockable",
+            "main": "./panel/index.js",
+            "size": {
+                "min-width": 620,
+                "min-height": 440,
+                "width": 1100,
+                "height": 760
+            }
         }
     },
-    "panel": {
-        "main": "panel/index.js",
-        "type": "dockable",
-        "title": "ASTC 纹理配置",
-        "width": 1100,
-        "height": 760
-    },
-    "dependencies": {
-        "image-size": "^1.0.2"
+    "contributions": {
+        "menu": [
+            {
+                "path": "纹理配置",
+                "label": "ASTC 纹理配置",
+                "message": "open-panel"
+            }
+        ],
+        "messages": {
+            "open-panel": {
+                "methods": ["openPanel"]
+            }
+        }
     }
 }

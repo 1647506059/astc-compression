@@ -1,6 +1,7 @@
 :host { display: flex; min-width: 620px; min-height: 440px; color: #d7dce4; background: #25282e; font: 12px/1.45 "Segoe UI", "Microsoft YaHei", sans-serif; }
 * { box-sizing: border-box; }
-.astc-panel { display: flex; flex: 1; min-height: 0; min-width: 0; flex-direction: column; }
+.astc-panel { display: flex; flex: 1; min-height: 0; min-width: 0; flex-direction: column; overflow-y: auto; }
+.astc-panel > :not(.table-wrap) { flex-shrink: 0; }
 header { display: flex; align-items: center; padding: 16px 18px 13px; border-bottom: 1px solid #40444c; }
 header > button + button { margin-left: 8px; }
 header > div { flex: 1; }

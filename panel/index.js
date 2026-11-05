@@ -1,12 +1,13 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 const { createService } = require('../lib/asset-service');
 const config = require('../lib/texture-config');
 const { forEachLimit, checkCancelled } = require('../lib/async-work');
 
 function createPanel(root, editor) {
-    const service = createService(editor.assetdb);
+    const service = createService(editor);
     const el = id => root.querySelector('#' + id);
     const state = { roots: [], rows: [], page: 0, busy: false, phase: '', scanned: false, disposed: false, signal: null };
     const pageSize = 100;
@@ -21,7 +22,7 @@ function createPanel(root, editor) {
     const options = () => ({ sourceType: el('source-type').value, block: el('block').value,
         quality: el('quality').value, fallbackQuality: el('fallback-quality').value });
     const escape = value => String(value == null ? '' : value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
-    const configured = (row, platforms) => platforms.some(id => Object.prototype.hasOwnProperty.call(row.meta.platformSettings || {}, id));
+    const configured = (row, platforms) => config.platformSummary(row, platforms).some(item => item.configured);
     function notice(text, error = false) {
         if (state.disposed) return;
         el('notice').textContent = text;
@@ -49,8 +50,10 @@ function createPanel(root, editor) {
         if (!text) throw new Error('请填写目录路径。');
         if (text.startsWith('db://')) return config.normalizeUrl(text);
         if (/^assets(?:[/\\]|$)/.test(text)) return config.normalizeUrl('db://' + text.replace(/\\/g, '/'));
-        const url = editor.assetdb.remote.fspathToUrl(text);
-        return config.normalizeUrl(url);
+        if (!path.isAbsolute(text)) throw new Error('请选择当前工程 assets 内的绝对路径。');
+        const relative = path.relative(path.join(editor.Project.path, 'assets'), path.resolve(text));
+        if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) throw new Error('请选择当前工程 assets 内的资源或目录。');
+        return config.normalizeUrl('db://assets' + (relative ? '/' + relative.replace(/\\/g, '/') : ''));
     }
     function invalidate() {
         state.rows = []; state.scanned = false; state.page = 0;
@@ -109,9 +112,8 @@ function createPanel(root, editor) {
         state.page = Math.min(state.page, pages - 1);
         const start = state.page * pageSize, end = Math.min(start + pageSize, filtered.length);
         el('results').innerHTML = filtered.slice(start, end).map(({row, index}) => {
-            const summaries = config.platformSummary(row.meta, platforms);
-            const width = row.kind === 'atlas' ? row.meta.maxWidth : row.meta.width;
-            const height = row.kind === 'atlas' ? row.meta.maxHeight : row.meta.height;
+            const summaries = config.platformSummary(row, platforms);
+            const { width, height } = config.dimensions(row.meta);
             const size = width && height ? (row.kind === 'atlas' ? '上限 ' : '') + width + ' × ' + height : '—';
             const tag = row.kind === 'atlas' ? '图集' : row.kind.toUpperCase();
             return '<tr class="' + (row.ownerUuid ? 'covered' : '') + '"><td><input type="checkbox" data-row="' + index + '" ' +
@@ -183,18 +185,13 @@ function createPanel(root, editor) {
     async function useSelection() {
         if (state.busy) return;
         try {
-            const uuids = editor.Selection.curSelection('asset');
+            const uuids = editor.Selection.getSelected('asset');
             if (!uuids || !uuids.length) throw new Error('请先在资源管理器选中目录、图集或图片。');
             await scan(async (signal, report) => {
                 const selection = new Array(uuids.length);
                 let completed = 0;
                 await forEachLimit(uuids, 8, async (uuid, index) => {
-                    const url = await new Promise((resolve, reject) => {
-                        editor.assetdb.queryUrlByUuid(uuid, (error, url) => {
-                            if (error) { reject(error); return; }
-                            try { resolve(toUrl(url)); } catch (err) { reject(err); }
-                        });
-                    });
+                    const url = toUrl(await editor.Message.request('asset-db', 'query-url', uuid));
                     selection[index] = {uuid, url};
                     report({phase:'scan',stage:'读取选择',done:++completed,total:uuids.length});
                 }, signal);
@@ -202,11 +199,11 @@ function createPanel(root, editor) {
             });
         } catch (error) { notice(error.message, true); }
     }
-    el('platforms').innerHTML = config.PLATFORMS.map(item => '<label><input type="checkbox" data-platform="' + item.id + '" ' + (item.id === 'minigame' ? 'checked' : '') + '>' + item.label + '</label>').join('');
+    el('platforms').innerHTML = config.PLATFORMS.map(item => '<label><input type="checkbox" data-platform="' + item.id + '" ' + (item.id === 'miniGame' ? 'checked' : '') + '>' + item.label + '</label>').join('');
     el('use-selection').addEventListener('click', useSelection);
     el('choose-folder').addEventListener('click', async () => {
         try {
-            const result = await editor.Dialog.openFile({ title: '选择 ASTC 检索目录', defaultPath: editor.Project.path + '/assets', properties: ['openDirectory', 'multiSelections'] });
+            const result = await editor.Dialog.select({ title: '选择 ASTC 检索目录', path: editor.Project.path + '/assets', type: 'directory', multi: true });
             const paths = Array.isArray(result) ? result : result && result.filePaths || [];
             if (!paths.length) return;
             state.roots = paths.map(toUrl); invalidate(); await scan();
@@ -245,10 +242,11 @@ function createPanel(root, editor) {
 }
 
 if (typeof Editor !== 'undefined') {
-    Editor.Panel.extend({
-        style: fs.readFileSync(Editor.url('packages://astc/panel/index.css'), 'utf8'),
-        template: fs.readFileSync(Editor.url('packages://astc/panel/index.html'), 'utf8'),
-        ready() { this.astcPanel = createPanel(this.shadowRoot, Editor); },
+    module.exports = Editor.Panel.define({
+        style: fs.readFileSync(path.join(__dirname, 'index.css'), 'utf8'),
+        template: fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8'),
+        $: { root: '.astc-panel' },
+        ready() { this.astcPanel = createPanel(this.$.root, Editor); },
         close() { if (this.astcPanel) this.astcPanel.dispose(); },
     });
 } else module.exports = { createPanel };
