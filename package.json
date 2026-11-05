@@ -1,0 +1,22 @@
+{
+    "name": "astc",
+    "version": "1.0.0",
+    "description": "图集优先的 ASTC 批量配置与检索工具，支持 PNG 和 JPG",
+    "author": "tangcm",
+    "main": "main.js",
+    "main-menu": {
+        "纹理配置/ASTC 纹理配置": {
+            "message": "astc:open"
+        }
+    },
+    "panel": {
+        "main": "panel/index.js",
+        "type": "dockable",
+        "title": "ASTC 纹理配置",
+        "width": 1100,
+        "height": 760
+    },
+    "dependencies": {
+        "image-size": "^1.0.2"
+    }
+}

@@ -1,0 +1,18 @@
+<div class="astc-panel">
+    <header><div><h1>ASTC 纹理配置</h1><span class="muted">图集优先 · PNG / JPG · Creator 2.4</span></div><button id="use-selection" class="primary">检索选中资源</button><button id="choose-folder">选择目录…</button></header>
+    <section class="scope">
+        <div class="path-entry"><input id="path-input" placeholder="输入 db://assets/…、assets/… 或工程内的绝对路径，回车检索" aria-label="资源目录路径"><button id="add-path">添加并检索</button><button id="scan">重新检索</button><button id="cancel" hidden>停止检索</button><button id="clear-paths" class="subtle">清空</button></div>
+        <div id="roots" class="roots"></div><div id="recent" class="recent"></div>
+    </section>
+    <section class="settings">
+        <div class="setting-line"><span class="field-label">目标平台</span><div id="platforms" class="inline-options"></div><label class="source-label">源图片<select id="source-type"><option value="all">PNG + JPG / JPEG</option><option value="png">仅 PNG</option><option value="jpg">仅 JPG / JPEG</option></select></label></div>
+        <div class="setting-line"><span class="field-label">压缩方案</span><label>ASTC 块<select id="block"><option value="4x4">4 × 4 · 8 bpp</option><option value="6x6" selected>6 × 6 · 3.56 bpp</option><option value="8x8">8 × 8 · 2 bpp</option></select></label><label>编码质量<select id="quality"><option value="fast">快速</option><option value="medium" selected>均衡</option><option value="thorough">精细</option></select></label><label>回退图质量<input id="fallback-quality" type="number" min="0" max="100" value="80"></label></div>
+        <div id="format-preview" class="format-preview"></div>
+    </section>
+    <div class="stats"><span>待配图集 <b id="atlas-count">0</b></span><span>PNG 碎图 <b id="png-count">0</b></span><span>JPG 碎图 <b id="jpg-count">0</b></span><span>跟随图集 <b id="covered-count">0</b></span><span>已有平台配置 <b id="configured-count">0</b></span></div>
+    <div class="result-tools"><input id="keyword" type="search" placeholder="筛选名称或路径…" aria-label="筛选结果"><label><input id="configured-only" type="checkbox">仅看已有配置</label><label><input id="show-covered" type="checkbox">显示图集内碎图</label><span id="result-count" class="muted">显示 0 / 0</span></div>
+    <div class="table-wrap"><table><thead><tr><th class="check-cell"><input id="select-all" type="checkbox" aria-label="勾选全部筛选结果" title="跨页勾选全部筛选结果"></th><th class="kind-cell">类型</th><th>资源 / 处理原因</th><th class="size-cell">尺寸</th><th class="config-cell">当前平台配置</th></tr></thead><tbody id="results"></tbody></table><div id="empty" class="empty">先检索，查看将配置的图集和碎图。</div></div>
+    <div id="pagination" class="pagination" hidden><span class="muted">表头全选作用于全部筛选结果</span><span id="page-label"></span><button id="previous-page">上一页</button><button id="next-page">下一页</button></div>
+    <footer><div class="action-line"><span id="selection-summary">勾选 0 项</span><button id="remove-directory" class="subtle danger" title="移除本次检索全部资源的所选平台配置，包含图集内碎图的旧配置，不受表格搜索过滤影响">移除本次检索配置</button><button id="remove" class="danger">移除勾选配置</button><button id="apply" class="primary">应用到勾选资源</button></div><div class="progress-line"><progress id="progress" max="1" value="0"></progress><span id="progress-label">待检索</span></div><div id="notice" role="status">先选择目录检索，写入时只更改所选平台的压缩配置。</div></footer>
+    <aside>JPG 可以转 ASTC，但原有有损压缩不会恢复；透明图与图集保留 PNG 回退。ASTC 支持以真机为准，回退图保障兼容。图集归属根据目录、Sprite 类型与尺寸识别；最终是否合图以构建结果为准。</aside>
+</div>
